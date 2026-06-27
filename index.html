@@ -1,0 +1,2260 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตรวจนับและควบคุมคลังทรัพย์สิน - DBD Internal Audit</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-bg: #0b1329;
+            --secondary-bg: #1c2541;
+            --tertiary-bg: #3a506b;
+            --accent-blue: #00b4d8;
+            --accent-blue-hover: #0096c7;
+            --accent-gold: #d4af37;
+            --accent-gold-hover: #b8901c;
+            --accent-gold-glow: rgba(212, 175, 55, 0.25);
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+            --success-green: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.15);
+            --danger-red: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.15);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            --shadow-glow: 0 0 15px rgba(0, 180, 216, 0.15);
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Ambient glowing background */
+        .ambient-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .ambient-glow-1 {
+            position: absolute;
+            top: -10%; left: 20%;
+            width: 50vw; height: 50vw;
+            background: radial-gradient(circle, rgba(0, 180, 216, 0.08) 0%, transparent 70%);
+            filter: blur(40px);
+        }
+        .ambient-glow-2 {
+            position: absolute;
+            bottom: -10%; right: 10%;
+            width: 45vw; height: 45vw;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+            filter: blur(40px);
+        }
+
+        .container {
+            max-width: 1300px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Top header bar */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 28px;
+            background: rgba(28, 37, 65, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo-container {
+            width: 54px;
+            height: 54px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md);
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 10px rgba(255,255,255,0.05);
+        }
+
+        .logo-container img {
+            width: calc(100% + 12px);
+            height: calc(100% + 12px);
+            object-fit: cover;
+            display: block;
+            margin: -6px;
+        }
+
+        .header-title-wrap h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(120deg, #ffffff 30%, #e2e8f0 70%, var(--accent-gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-title-wrap p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .live-clock {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            background: rgba(11, 19, 41, 0.5);
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .db-status {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--success-green);
+            background: var(--success-light);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 8px 16px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .db-status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--success-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Stats Dashboard Widgets */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: rgba(28, 37, 65, 0.55);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-lg);
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(28, 37, 65, 0.75);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-value {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.85rem;
+            font-weight: 700;
+            color: var(--text-light);
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            background: rgba(11, 19, 41, 0.5);
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-card:nth-child(1) .stat-icon { color: var(--accent-blue); }
+        .stat-card:nth-child(2) .stat-icon { color: var(--accent-gold); }
+        .stat-card:nth-child(3) .stat-icon { color: var(--success-green); }
+        .stat-card:nth-child(4) .stat-icon { color: #a78bfa; }
+
+        /* Main Workspace: Tab Navigation and Panels */
+        .workspace-panel {
+            background: rgba(28, 37, 65, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-grow: 1;
+        }
+
+        .tabs-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 20px 0 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(11, 19, 41, 0.4);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .tabs-list {
+            display: flex;
+            gap: 4px;
+        }
+
+        .tab-trigger {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 16px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .tab-trigger:hover {
+            color: var(--text-light);
+        }
+
+        .tab-trigger.active {
+            color: var(--accent-blue);
+        }
+
+        .tab-trigger.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 100%; height: 3px;
+            background-color: var(--accent-blue);
+            box-shadow: 0 -2px 10px var(--accent-blue);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .tab-action-btn {
+            margin-bottom: 6px;
+        }
+
+        /* Tab Content Panes */
+        .tab-content {
+            padding: 24px;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            animation: fadeIn 0.3s ease;
+            flex-grow: 1;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Search & Filter Row */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex: 1;
+            max-width: 420px;
+            min-width: 250px;
+        }
+
+        .search-wrapper i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .input-control {
+            width: 100%;
+            background: rgba(11, 19, 41, 0.4);
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+            padding: 12px 16px 12px 42px;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-family: 'Sarabun', sans-serif;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .input-control:focus {
+            border-color: var(--accent-blue);
+            background: rgba(11, 19, 41, 0.6);
+            box-shadow: 0 0 10px rgba(0, 180, 216, 0.15);
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        /* Tables design */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: rgba(11, 19, 41, 0.25);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+
+        th {
+            background-color: rgba(11, 19, 41, 0.6);
+            color: var(--text-light);
+            font-weight: 600;
+            padding: 14px 18px;
+            border-bottom: 2px solid var(--border-color);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            color: var(--text-light);
+        }
+
+        tbody tr {
+            transition: var(--transition);
+        }
+
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Buttons Styling */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 18px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            border: 1px solid transparent;
+            font-family: 'Sarabun', sans-serif;
+            transition: var(--transition);
+            text-decoration: none;
+            outline: none;
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #b8901c 100%);
+            color: #0b1329;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+        }
+        .btn-gold:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(212, 175, 55, 0.35);
+        }
+        .btn-gold:active { transform: translateY(0); }
+
+        .btn-blue {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #0077b6 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 180, 216, 0.2);
+        }
+        .btn-blue:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 180, 216, 0.35);
+        }
+        .btn-blue:active { transform: translateY(0); }
+
+        .btn-success {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--success-green);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+        .btn-success:hover {
+            background: var(--success-green);
+            color: #0b1329;
+            box-shadow: 0 4px 12px var(--success-glow);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--danger-red);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+        .btn-danger:hover {
+            background: var(--danger-red);
+            color: white;
+            box-shadow: 0 4px 12px var(--danger-glow);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-light);
+            border-color: var(--border-color);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-icon-only {
+            padding: 8px;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--success-green);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--danger-red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .badge-info {
+            background: rgba(0, 180, 216, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(0, 180, 216, 0.2);
+        }
+
+        .balance-val {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .history-mini-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .history-mini-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .history-mini-list li i {
+            margin-top: 3px;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+
+        /* Empty states */
+        .empty-state {
+            padding: 48px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 2.5rem;
+            opacity: 0.6;
+        }
+
+        /* Modal Dialogs (Glassmorphic Custom Modals) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(11, 19, 41, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-window {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 480px;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            transform: scale(0.95) translateY(10px);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-overlay.active .modal-window {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(11, 19, 41, 0.3);
+        }
+
+        .modal-header h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-header h3 i {
+            color: var(--accent-gold);
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            color: var(--text-light);
+        }
+
+        .modal-body {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background: rgba(11, 19, 41, 0.3);
+        }
+
+        /* Custom Modal Form Tabs */
+        .modal-tabs {
+            display: flex;
+            background: rgba(11, 19, 41, 0.5);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .modal-tab-btn.active[data-type="in"] {
+            background: var(--success-green);
+            color: #0b1329;
+        }
+
+        .modal-tab-btn.active[data-type="out"] {
+            background: var(--danger-red);
+            color: white;
+        }
+
+        /* Asset Detail Badge in Modal */
+        .modal-asset-info {
+            background: rgba(11, 19, 41, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-asset-label {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .modal-asset-qty {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .modal-asset-qty span {
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            color: var(--accent-gold);
+            font-size: 1.1rem;
+        }
+
+        /* Autocomplete Suggestions Design */
+        .autocomplete-wrapper {
+            position: relative;
+        }
+
+        .suggestions-list {
+            position: absolute;
+            top: 100%; left: 0;
+            width: 100%;
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 101;
+            max-height: 180px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .suggestions-list.active {
+            display: block;
+        }
+
+        .suggestion-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .suggestion-item:hover {
+            background-color: rgba(0, 180, 216, 0.15);
+            color: var(--text-light);
+        }
+
+        .suggestion-item i {
+            font-size: 0.8rem;
+            color: var(--accent-gold);
+        }
+
+        .recent-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .recent-chip {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .recent-chip:hover {
+            color: var(--text-light);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Checkbox styling */
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            margin-top: 4px;
+        }
+
+        .checkbox-label input {
+            accent-color: var(--accent-blue);
+            width: 16px;
+            height: 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        /* Personnel Manager list visual style */
+        .personnel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .personnel-card {
+            background: rgba(11, 19, 41, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: var(--transition);
+        }
+
+        .personnel-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(11, 19, 41, 0.5);
+        }
+
+        .personnel-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .personnel-avatar {
+            width: 38px;
+            height: 38px;
+            background: var(--tertiary-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--accent-gold);
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .personnel-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .personnel-count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Person transaction statistics cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 20px;
+        }
+
+        .summary-card {
+            background: rgba(11, 19, 41, 0.35);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .summary-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .summary-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .summary-totals {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        .summary-totals span {
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .summary-items-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .summary-item-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .summary-item-name {
+            font-weight: 500;
+        }
+
+        .summary-item-qtys {
+            display: flex;
+            gap: 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .summary-qty-in { color: var(--success-green); }
+        .summary-qty-out { color: var(--danger-red); }
+
+        /* General Alert/Notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 24px; right: 24px;
+            z-index: 1000;
+            background: rgba(28, 37, 65, 0.9);
+            border: 1px solid var(--accent-blue);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+        
+        .toast-notification.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            font-size: 1.2rem;
+        }
+        .toast-success .toast-icon { color: var(--success-green); }
+        .toast-error .toast-icon { color: var(--danger-red); }
+        .toast-info .toast-icon { color: var(--accent-blue); }
+
+        .toast-message {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Footer text styling */
+        footer {
+            text-align: center;
+            padding: 24px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Glowing effect backgrounds -->
+    <div class="ambient-bg">
+        <div class="ambient-glow-1"></div>
+        <div class="ambient-glow-2"></div>
+    </div>
+
+    <div class="container">
+        <!-- Site Header -->
+        <header>
+            <div class="header-brand">
+                <div class="logo-container">
+                    <img src="dbd.png" alt="DBD Logo" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'color:var(--accent-gold);font-weight:900;font-size:16px;\'>DBD</span>';">
+                </div>
+                <div class="header-title-wrap">
+                    <h1>ระบบตรวจนับและควบคุมคลังทรัพย์สิน</h1>
+                    <p><i class="fa-solid fa-shield-halved" style="color:var(--accent-gold)"></i> กลุ่มตรวจสอบภายใน (Internal Audit) - DBD</p>
+                </div>
+            </div>
+            <div class="header-meta">
+                <div class="live-clock" id="liveClock">
+                    <i class="fa-regular fa-clock"></i> <span>กำลังโหลด...</span>
+                </div>
+                <div class="db-status">
+                    <div class="db-status-dot"></div>
+                    <span>Local Database Active</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats row widgets -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-value" id="statAssetTypes">0</span>
+                    <span class="stat-label">ประเภททรัพย์สินทั้งหมด</span>
+                </div>
+                <div class="stat-icon">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-value" id="statTotalStock">0</span>
+                    <span class="stat-label">คงคลังรวม (หน่วย)</span>
+                </div>
+                <div class="stat-icon">
+                    <i class="fa-solid fa-warehouse"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-value" id="statTransactions">0</span>
+                    <span class="stat-label">ประวัติธุรกรรมทั้งหมด</span>
+                </div>
+                <div class="stat-icon">
+                    <i class="fa-solid fa-list-check"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-value" id="statPersonnelCount">0</span>
+                    <span class="stat-label">ผู้บันทึก/ผู้เบิก ในระบบ</span>
+                </div>
+                <div class="stat-icon">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main workspace containing tabs and tables -->
+        <main class="workspace-panel">
+            <div class="tabs-header">
+                <div class="tabs-list">
+                    <button class="tab-trigger active" onclick="switchTab('tab-assets')">
+                        <i class="fa-solid fa-box-open"></i> บัญชีคุมทรัพย์สิน
+                    </button>
+                    <button class="tab-trigger" onclick="switchTab('tab-history')">
+                        <i class="fa-solid fa-history"></i> ประวัติรายการอย่างละเอียด
+                    </button>
+                    <button class="tab-trigger" onclick="switchTab('tab-summaries')">
+                        <i class="fa-solid fa-chart-pie"></i> รายงานยอดสะสมบุคคล
+                    </button>
+                    <button class="tab-trigger" onclick="switchTab('tab-personnel')">
+                        <i class="fa-solid fa-user-gear"></i> จัดการรายชื่อผู้เบิก
+                    </button>
+                </div>
+                <div class="tab-action-btn">
+                    <button class="btn btn-gold" onclick="openAddAssetModal()">
+                        <i class="fa-solid fa-plus"></i> เพิ่มรายการทรัพย์สินใหม่
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Content 1: Assets List -->
+            <div class="tab-content active" id="tab-assets">
+                <div class="toolbar">
+                    <div class="search-wrapper">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="assetSearchInput" class="input-control" placeholder="ค้นหาชื่อทรัพย์สิน..." oninput="renderAssetTable()">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;" class="text-center">ลำดับ</th>
+                                <th>รายการทรัพย์สิน</th>
+                                <th style="width: 110px;" class="text-right">ยอดยกมา</th>
+                                <th style="width: 110px;" class="text-right">นำเข้าคลัง (+)</th>
+                                <th style="width: 110px;" class="text-right">เบิกออก (-)</th>
+                                <th style="width: 120px;" class="text-center">คงเหลือ</th>
+                                <th style="width: 200px;" class="text-center">การจัดการคลัง</th>
+                                <th style="width: 250px;">ประวัติทำรายการล่าสุด</th>
+                                <th style="width: 60px;" class="text-center">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assetTableBody">
+                            <!-- JS populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab Content 2: Detailed Transaction Log -->
+            <div class="tab-content" id="tab-history">
+                <div class="toolbar">
+                    <div class="search-wrapper">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="txSearchInput" class="input-control" placeholder="ค้นหาตามรายการทรัพย์สิน หรือ ชื่อผู้เบิก..." oninput="renderTransactionTable()">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 180px;">วัน-เวลา</th>
+                                <th>รายการทรัพย์สิน</th>
+                                <th style="width: 120px;" class="text-center">ประเภท</th>
+                                <th style="width: 120px;" class="text-right">จำนวน (หน่วย)</th>
+                                <th>ผู้บันทึก / ผู้เบิก</th>
+                                <th style="width: 120px;" class="text-center">การดำเนินการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionTableBody">
+                            <!-- JS populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab Content 3: Reports Summary By Person -->
+            <div class="tab-content" id="tab-summaries">
+                <div class="summary-grid" id="summaryGrid">
+                    <!-- JS populated -->
+                </div>
+            </div>
+
+            <!-- Tab Content 4: Manage Personnel Registered -->
+            <div class="tab-content" id="tab-personnel">
+                <div class="toolbar">
+                    <div class="search-wrapper" style="max-width: 500px; display: flex; gap: 10px;">
+                        <i class="fa-solid fa-user-plus" style="left: 16px;"></i>
+                        <input type="text" id="newPersonnelNameInput" class="input-control" placeholder="พิมพ์ชื่อผู้เบิก/พนักงาน เพื่อลงทะเบียนไว้ในระบบ..." style="padding-left: 42px;">
+                        <button class="btn btn-blue" onclick="addPersonnelFromTab()" style="flex-shrink: 0;">
+                            <i class="fa-solid fa-plus"></i> เพิ่มรายชื่อ
+                        </button>
+                    </div>
+                </div>
+
+                <div class="personnel-grid" id="personnelGrid">
+                    <!-- JS populated -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Overlay 1: Add Asset Modal -->
+    <div class="modal-overlay" id="addAssetModal">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-boxes-stacked"></i> เพิ่มรายการทรัพย์สินใหม่</h3>
+                <button class="modal-close" onclick="closeModal('addAssetModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="newAssetName">ชื่อรายการทรัพย์สิน</label>
+                    <input type="text" id="newAssetName" class="input-control" placeholder="เช่น เครื่องคอมพิวเตอร์ออลอินวัน, โน้ตบุ๊ก, เครื่องพิมพ์" style="padding-left: 16px;">
+                </div>
+                <div class="input-group">
+                    <label for="newAssetBroughtForward">จำนวนยอดยกมา (ยอดยกมาตั้งต้น)</label>
+                    <input type="number" id="newAssetBroughtForward" class="input-control" placeholder="0" min="0" value="0" style="padding-left: 16px;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addAssetModal')">ยกเลิก</button>
+                <button class="btn btn-gold" onclick="submitAddAsset()">+ บันทึกรายการ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Overlay 2: Add Transaction Modal (In/Out) -->
+    <div class="modal-overlay" id="transactionModal">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-right-left"></i> ทำรายการคลังทรัพย์สิน</h3>
+                <button class="modal-close" onclick="closeModal('transactionModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- In/Out Tab Trigger inside Modal -->
+                <div class="modal-tabs">
+                    <button class="modal-tab-btn active" id="modalTabIn" data-type="in" onclick="switchModalTransactionType('in')">
+                        <i class="fa-solid fa-circle-plus"></i> นำเข้าคลัง (+)
+                    </button>
+                    <button class="modal-tab-btn" id="modalTabOut" data-type="out" onclick="switchModalTransactionType('out')">
+                        <i class="fa-solid fa-circle-minus"></i> เบิกออก (-)
+                    </button>
+                </div>
+
+                <div class="modal-asset-info">
+                    <div class="modal-asset-label" id="modalAssetLabel">รายการทรัพย์สิน</div>
+                    <div class="modal-asset-qty">ยอดคงเหลือ: <span id="modalAssetBalance">0</span> หน่วย</div>
+                </div>
+
+                <div class="input-group">
+                    <label for="modalQty">จำนวนที่ทำรายการ (หน่วย)</label>
+                    <input type="number" id="modalQty" class="input-control" placeholder="ระบุจำนวน" min="1" value="1" style="padding-left: 16px;">
+                </div>
+
+                <div class="input-group">
+                    <label for="modalPersonInput">ชื่อผู้เบิก / ผู้นำส่ง</label>
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="modalPersonInput" class="input-control" placeholder="พิมพ์ชื่อบุคคล..." autocomplete="off" oninput="handlePersonInput(this.value)" onfocus="handlePersonFocus()" style="padding-left: 16px;">
+                        <div class="suggestions-list" id="modalSuggestions">
+                            <!-- JS suggestions list -->
+                        </div>
+                    </div>
+                    <!-- Quick Suggestions Chips under input -->
+                    <div class="recent-chips" id="recentPersonChips">
+                        <!-- JS populated dynamic chips of top personnel -->
+                    </div>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="modalSavePersonCheckbox" checked>
+                        <span>จดจำชื่อนี้ในระบบ (เพิ่มในฐานข้อมูลผู้เบิก)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('transactionModal')">ยกเลิก</button>
+                <button class="btn btn-success" id="modalConfirmBtn" onclick="submitTransaction()">ยืนยันบันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification element -->
+    <div class="toast-notification" id="toastNotification">
+        <span class="toast-icon"><i class="fa-solid fa-circle-info"></i></span>
+        <span class="toast-message">รายละเอียดข้อความ</span>
+    </div>
+
+    <!-- Page Footer -->
+    <footer>
+        <p>&copy; 2026 กรมพัฒนาธุรกิจการค้า (Department of Business Development). ระบบจัดการภายใน กลุ่มการตรวจสอบภายใน (Internal Audit) - สิทธิ์การดูแลรักษาข้อมูลผู้ใช้งานระบบ</p>
+    </footer>
+
+    <!-- System JavaScript -->
+    <script>
+        // Storage Keys
+        const STORAGE_KEY = 'dbd_asset_audit_data_v2'; // เปลี่ยนเวอชั่นเพื่อเก็บรูปแบบใหม่
+        const LEGACY_STORAGE_KEY = 'dbd_asset_audit_data_v1';
+
+        // Application State
+        let assets = [];
+        let personnel = []; // รายชื่อบุคคลที่จำในระบบ
+        let transactions = []; // บันทึกประวัติทำรายการย้อนหลังทั้งหมด
+        let userWithdrawals = {}; // คงความสัมพันธ์เก่าเพื่อแสดงผลสรุปสะสม และ Migration
+
+        // Active State for transaction modal
+        let activeAssetIndex = null;
+        let activeTransactionType = 'in'; // 'in' หรือ 'out'
+
+        // Load & Initialize data
+        function loadData() {
+            try {
+                // 1. โหลดข้อมูลเวอร์ชันปัจจุบัน v2
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    assets = parsed.assets || [];
+                    personnel = parsed.personnel || [];
+                    transactions = parsed.transactions || [];
+                    userWithdrawals = parsed.userWithdrawals || {};
+                    return;
+                }
+
+                // 2. หากไม่มี v2 แต่มีข้อมูล v1 ดั้งเดิม ให้ทำการ Migration (โอนย้ายข้อมูล)
+                const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
+                if (legacyRaw) {
+                    const parsed = JSON.parse(legacyRaw);
+                    const legacyAssets = parsed.assets || [];
+                    const legacyWithdrawals = parsed.userWithdrawals || {};
+
+                    // แปลงรูปแบบ assets เก่า
+                    assets = legacyAssets.map(a => {
+                        return {
+                            id: a.id,
+                            name: a.name,
+                            broughtForward: a.broughtForward || 0,
+                            totalIn: a.totalIn || 0,
+                            totalOut: a.totalOut || 0,
+                            currentBalance: a.currentBalance || 0,
+                            history: a.history || []
+                        };
+                    });
+
+                    // นำข้อมูลบุคคลที่เคยมีมาบันทึกในระบบจำรายชื่อ
+                    const nameSet = new Set();
+                    Object.keys(legacyWithdrawals).forEach(name => {
+                        if (name.trim()) nameSet.add(name.trim());
+                    });
+
+                    // ถอดรายชื่อจาก Log ประวัติเก่าๆ (เผื่อประวัติผู้เบิก)
+                    assets.forEach(a => {
+                        if (a.history && Array.isArray(a.history)) {
+                            a.history.forEach(h => {
+                                const match = h.match(/โดย:\s*(.+)$/);
+                                if (match) {
+                                    nameSet.add(match[1].trim());
+                                }
+                            });
+                        }
+                    });
+
+                    personnel = Array.from(nameSet);
+                    userWithdrawals = legacyWithdrawals;
+
+                    // สร้างรายการ Transactions ย้อนหลังจากประวัติเดิมเท่าที่จะเดาข้อมูลได้
+                    transactions = [];
+                    assets.forEach(a => {
+                        if (a.history && Array.isArray(a.history)) {
+                            a.history.forEach(h => {
+                                // รูปแบบ: [timestamp] เบิกออก -qty หน่วย โดย: name
+                                // หรือ [timestamp] นำเข้า +qty หน่วย
+                                const isIn = h.includes('นำเข้า');
+                                const timestampMatch = h.match(/^\[([^\]]+)\]/);
+                                const timestamp = timestampMatch ? timestampMatch[1] : new Date().toLocaleString('th-TH');
+                                
+                                let qty = 0;
+                                let person = 'ไม่ระบุชื่อ';
+                                
+                                if (isIn) {
+                                    const qtyMatch = h.match(/นำเข้า\s*\+(\d+)/);
+                                    qty = qtyMatch ? parseInt(qtyMatch[1]) : 0;
+                                    person = 'ระบบ (นำเข้าเริ่มต้น)';
+                                } else {
+                                    const qtyMatch = h.match(/เบิกออก\s*-(\d+)/);
+                                    qty = qtyMatch ? parseInt(qtyMatch[1]) : 0;
+                                    const personMatch = h.match(/โดย:\s*(.+)$/);
+                                    if (personMatch) person = personMatch[1].trim();
+                                }
+
+                                transactions.push({
+                                    id: 'tx-' + Math.random().toString(36).substr(2, 9),
+                                    timestamp: timestamp,
+                                    assetId: a.id,
+                                    assetName: a.name,
+                                    type: isIn ? 'in' : 'out',
+                                    qty: qty,
+                                    person: person
+                                });
+                            });
+                        }
+                    });
+
+                    // จัดเรียงธุรกรรมย้อนหลังจากใหม่สุดไปเก่าสุด
+                    transactions.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                    // บันทึกเป็น V2 ใหม่
+                    saveData();
+                    showToast('ย้ายข้อมูลฐานข้อมูลเก่า V1 เข้าสู่ดีไซน์ใหม่เรียบร้อยแล้ว!', 'success');
+                } else {
+                    // หากไม่มีข้อมูลใดๆ เลย ให้ใส่ข้อมูลทดลอง (Seed Data)
+                    seedInitialData();
+                }
+            } catch (e) {
+                console.error('โหลดข้อมูลล้มเหลว', e);
+                showToast('การเชื่อมต่อกับ Local Storage มีปัญหา', 'error');
+            }
+        }
+
+        // เซตข้อมูลเริ่มต้นสำหรับใช้ตัวอย่าง
+        function seedInitialData() {
+            assets = [
+                { id: 1, name: "เครื่องคอมพิวเตอร์แบบ All-In-One (i5/8GB)", broughtForward: 15, totalIn: 2, totalOut: 3, currentBalance: 14, history: [] },
+                { id: 2, name: "เครื่องพิมพ์เลเซอร์สี (Multifunction)", broughtForward: 5, totalIn: 0, totalOut: 1, currentBalance: 4, history: [] },
+                { id: 3, name: "แท็บเล็ตตรวจราชการ (iPad Air)", broughtForward: 20, totalIn: 5, totalOut: 8, currentBalance: 17, history: [] },
+                { id: 4, name: "เครื่องสแกนเนอร์เอกสารความเร็วสูง", broughtForward: 3, totalIn: 1, totalOut: 0, currentBalance: 4, history: [] }
+            ];
+            
+            personnel = ["สมชาย รักดี", "วิภา รุ่งเรือง", "ประพันธ์ นามดี", "อัจฉรา สุขใจ"];
+
+            const now = new Date();
+            const dateStr = (offsetMin) => {
+                const d = new Date(now.getTime() - offsetMin * 60000);
+                return d.toLocaleString('th-TH');
+            };
+
+            transactions = [
+                { id: "tx-1", timestamp: dateStr(120), assetId: 1, assetName: "เครื่องคอมพิวเตอร์แบบ All-In-One (i5/8GB)", type: "in", qty: 2, person: "วิภา รุ่งเรือง" },
+                { id: "tx-2", timestamp: dateStr(90), assetId: 3, assetName: "แท็บเล็ตตรวจราชการ (iPad Air)", type: "out", qty: 5, person: "สมชาย รักดี" },
+                { id: "tx-3", timestamp: dateStr(60), assetId: 2, assetName: "เครื่องพิมพ์เลเซอร์สี (Multifunction)", type: "out", qty: 1, person: "ประพันธ์ นามดี" },
+                { id: "tx-4", timestamp: dateStr(30), assetId: 3, assetName: "แท็บเล็ตตรวจราชการ (iPad Air)", type: "in", qty: 5, person: "อัจฉรา สุขใจ" },
+                { id: "tx-5", timestamp: dateStr(15), assetId: 3, assetName: "แท็บเล็ตตรวจราชการ (iPad Air)", type: "out", qty: 8, person: "สมชาย รักดี" },
+                { id: "tx-6", timestamp: dateStr(5), assetId: 1, assetName: "เครื่องคอมพิวเตอร์แบบ All-In-One (i5/8GB)", type: "out", qty: 3, person: "วิภา รุ่งเรือง" }
+            ];
+
+            // สร้างสถิติสะสมแยกตามคนเบิก
+            userWithdrawals = {
+                "สมชาย รักดี": { "แท็บเล็ตตรวจราชการ (iPad Air)": 13 },
+                "ประพันธ์ นามดี": { "เครื่องพิมพ์เลเซอร์สี (Multifunction)": 1 },
+                "วิภา รุ่งเรือง": { "เครื่องคอมพิวเตอร์แบบ All-In-One (i5/8GB)": 3 }
+            };
+
+            // อัปเดตประวัติแถวข้อมูล
+            updateAssetHistoryFromTx();
+            saveData();
+        }
+
+        // คัดลอกประวัติข้อความของทรัพย์สินแยกตามตัวจาก Transactions
+        function updateAssetHistoryFromTx() {
+            assets.forEach(a => {
+                const assetTxs = transactions.filter(t => t.assetId === a.id);
+                // เรียงจากเก่าสุดไปใหม่สุดเพื่อให้ประวัติถูกต้อง
+                const sorted = assetTxs.slice().reverse();
+                a.history = sorted.map(t => {
+                    if (t.type === 'in') {
+                        return `[${t.timestamp}] นำเข้า +${t.qty} หน่วย โดย: ${t.person}`;
+                    } else {
+                        return `[${t.timestamp}] เบิกออก -${t.qty} หน่วย โดย: ${t.person}`;
+                    }
+                });
+            });
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    assets,
+                    personnel,
+                    transactions,
+                    userWithdrawals
+                }));
+            } catch (e) {
+                console.error('บันทึกข้อมูลไม่สำเร็จ', e);
+            }
+        }
+
+        // Notification function
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toastNotification');
+            toast.className = `toast-notification toast-${type} active`;
+            
+            // Set icon
+            const icon = toast.querySelector('.toast-icon i');
+            if (type === 'success') {
+                icon.className = 'fa-solid fa-circle-check';
+            } else if (type === 'error') {
+                icon.className = 'fa-solid fa-circle-exclamation';
+            } else {
+                icon.className = 'fa-solid fa-circle-info';
+            }
+
+            toast.querySelector('.toast-message').innerText = message;
+
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3500);
+        }
+
+        // Tab management
+        function switchTab(tabId) {
+            // Remove active class from all tabs & triggers
+            document.querySelectorAll('.tab-trigger').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(pane => pane.classList.remove('active'));
+
+            // Find target trigger based on tabId mapping
+            let triggerBtn = null;
+            if (tabId === 'tab-assets') triggerBtn = document.querySelector('[onclick="switchTab(\'tab-assets\')"]');
+            else if (tabId === 'tab-history') triggerBtn = document.querySelector('[onclick="switchTab(\'tab-history\')"]');
+            else if (tabId === 'tab-summaries') triggerBtn = document.querySelector('[onclick="switchTab(\'tab-summaries\')"]');
+            else if (tabId === 'tab-personnel') triggerBtn = document.querySelector('[onclick="switchTab(\'tab-personnel\')"]');
+
+            if (triggerBtn) triggerBtn.classList.add('active');
+            
+            const targetPane = document.getElementById(tabId);
+            if (targetPane) targetPane.classList.add('active');
+
+            // Render relevant data
+            if (tabId === 'tab-assets') renderAssetTable();
+            else if (tabId === 'tab-history') renderTransactionTable();
+            else if (tabId === 'tab-summaries') renderSummaryGrid();
+            else if (tabId === 'tab-personnel') renderPersonnelGrid();
+
+            updateStats();
+        }
+
+        // Update top widgets stats
+        function updateStats() {
+            // 1. Total Asset Types
+            document.getElementById('statAssetTypes').innerText = assets.length;
+            
+            // 2. Total In-Stock quantities
+            const totalStock = assets.reduce((sum, item) => sum + item.currentBalance, 0);
+            document.getElementById('statTotalStock').innerText = totalStock.toLocaleString('th-TH');
+
+            // 3. Total Transaction Logs Count
+            document.getElementById('statTransactions').innerText = transactions.length;
+
+            // 4. Remembered personnel count
+            document.getElementById('statPersonnelCount').innerText = personnel.length;
+        }
+
+        // Render Table 1: Assets List
+        function renderAssetTable() {
+            const tbody = document.getElementById('assetTableBody');
+            tbody.innerHTML = '';
+
+            const keyword = document.getElementById('assetSearchInput').value.trim().toLowerCase();
+            const filtered = assets.filter(a => !keyword || a.name.toLowerCase().includes(keyword));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-box-open"></i>
+                                <p>${assets.length === 0 ? 'ยังไม่มีข้อมูลทรัพย์สินในระบบ เริ่มต้นสร้างโดยการคลิกปุ่ม "เพิ่มรายการทรัพย์สินใหม่" ด้านบน' : 'ไม่พบรายการทรัพย์สินที่ตรงกับการค้นหา'}</p>
+                            </div>
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            filtered.forEach((a, displayIndex) => {
+                // Find actual index in global assets array
+                const index = assets.findIndex(item => item.id === a.id);
+                
+                // Construct mini history list
+                let historyHTML = '<span style="font-size:0.8rem;color:var(--text-muted);font-style:italic;">ไม่มีประวัติ</span>';
+                if (a.history && a.history.length > 0) {
+                    historyHTML = '<ul class="history-mini-list">';
+                    // Show last 2 transactions
+                    const recent = a.history.slice().reverse().slice(0, 2);
+                    recent.forEach(h => {
+                        const isIn = h.includes('นำเข้า');
+                        const icon = isIn ? '<i class="fa-solid fa-caret-up" style="color:var(--success-green)"></i>' : '<i class="fa-solid fa-caret-down" style="color:var(--danger-red)"></i>';
+                        // Clean print: strip [timestamp] prefix if needed or make it shorter
+                        const cleanText = h.replace(/^\[[^\]]+\]\s*/, '');
+                        historyHTML += `<li>${icon} <span>${cleanText}</span></li>`;
+                    });
+                    if (a.history.length > 2) {
+                        historyHTML += `<li style="font-size:0.75rem;padding-left:14px;"><a href="#" onclick="viewSpecificAssetHistory('${a.name}')" style="color:var(--accent-blue);text-decoration:none;">ดูประวัติทั้งหมด (${a.history.length})</a></li>`;
+                    }
+                    historyHTML += '</ul>';
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center" style="font-family:'Inter',sans-serif;font-weight:500;">${displayIndex + 1}</td>
+                    <td><strong style="color:var(--text-light);font-size:0.95rem;">${a.name}</strong></td>
+                    <td class="text-right" style="font-family:'Inter',sans-serif;color:var(--text-muted);">${a.broughtForward.toLocaleString()}</td>
+                    <td class="text-right" style="font-family:'Inter',sans-serif;color:var(--success-green);font-weight:500;">+${a.totalIn.toLocaleString()}</td>
+                    <td class="text-right" style="font-family:'Inter',sans-serif;color:var(--danger-red);font-weight:500;">-${a.totalOut.toLocaleString()}</td>
+                    <td class="text-center"><span class="balance-val">${a.currentBalance.toLocaleString()}</span></td>
+                    <td class="text-center" style="white-space:nowrap;">
+                        <button class="btn btn-success" onclick="openTransactionModal(${index}, 'in')">
+                            <i class="fa-solid fa-plus"></i> นำเข้า
+                        </button>
+                        <button class="btn btn-danger" onclick="openTransactionModal(${index}, 'out')">
+                            <i class="fa-solid fa-minus"></i> เบิกออก
+                        </button>
+                    </td>
+                    <td>${historyHTML}</td>
+                    <td class="text-center">
+                        <button class="btn btn-danger btn-icon-only btn-secondary" onclick="deleteAsset(${index})" title="ลบรายการ">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Direct search asset history and switch tab helper
+        function viewSpecificAssetHistory(assetName) {
+            document.getElementById('txSearchInput').value = assetName;
+            switchTab('tab-history');
+        }
+
+        // Render Table 2: Detailed Transaction Logs
+        function renderTransactionTable() {
+            const tbody = document.getElementById('transactionTableBody');
+            tbody.innerHTML = '';
+
+            const keyword = document.getElementById('txSearchInput').value.trim().toLowerCase();
+            
+            const filtered = transactions.filter(t => {
+                if (!keyword) return true;
+                return t.assetName.toLowerCase().includes(keyword) || 
+                       t.person.toLowerCase().includes(keyword) || 
+                       (t.type === 'in' ? 'นำเข้า' : 'เบิกออก').includes(keyword);
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-file-invoice"></i>
+                                <p>ไม่พบรายการประวัติการทำธุรกรรม</p>
+                            </div>
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            filtered.forEach(t => {
+                const badge = t.type === 'in' 
+                    ? `<span class="badge badge-success"><i class="fa-solid fa-circle-arrow-down"></i> นำเข้าคลัง</span>`
+                    : `<span class="badge badge-danger"><i class="fa-solid fa-circle-arrow-up"></i> เบิกจ่ายออก</span>`;
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-family:'Inter',sans-serif;color:var(--text-muted);font-size:0.85rem;">${t.timestamp}</td>
+                    <td><strong style="color:var(--text-light);">${t.assetName}</strong></td>
+                    <td class="text-center">${badge}</td>
+                    <td class="text-right" style="font-family:'Inter',sans-serif;font-weight:600;color:${t.type === 'in' ? 'var(--success-green)' : 'var(--danger-red)'}">
+                        ${t.type === 'in' ? '+' : '-'}${t.qty.toLocaleString()}
+                    </td>
+                    <td><span style="font-weight:500;"><i class="fa-regular fa-user" style="color:var(--accent-gold);margin-right:6px;"></i>${t.person}</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-secondary btn-danger btn-icon-only" onclick="rollbackTransaction('${t.id}')" title="ย้อนธุรกรรมกลับคืน (Rollback)">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Render Tab 3: Reports Summary By Person
+        function renderSummaryGrid() {
+            const grid = document.getElementById('summaryGrid');
+            grid.innerHTML = '';
+
+            // รวบรวมข้อมูลสะสมของธุรกรรมแต่ละคนแบบ Real-time จาก Array Transactions ทั้งหมด
+            const personSummary = {};
+
+            // ดึงรายชื่อบุคคลเพื่อตั้งค่าให้ถูกต้อง
+            personnel.forEach(p => {
+                personSummary[p] = {
+                    name: p,
+                    inCount: 0,
+                    outCount: 0,
+                    inQty: 0,
+                    outQty: 0,
+                    items: {}
+                };
+            });
+
+            // ประมวลผลแต่ละรายการใน Transactions
+            transactions.forEach(t => {
+                const name = t.person;
+                if (!personSummary[name]) {
+                    personSummary[name] = {
+                        name: name,
+                        inCount: 0,
+                        outCount: 0,
+                        inQty: 0,
+                        outQty: 0,
+                        items: {}
+                    };
+                }
+
+                const summary = personSummary[name];
+                if (t.type === 'in') {
+                    summary.inCount++;
+                    summary.inQty += t.qty;
+                } else {
+                    summary.outCount++;
+                    summary.outQty += t.qty;
+                }
+
+                // สรุปยอดตามชนิดสินค้า
+                if (!summary.items[t.assetName]) {
+                    summary.items[t.assetName] = { in: 0, out: 0 };
+                }
+                summary.items[t.assetName][t.type] += t.qty;
+            });
+
+            const users = Object.keys(personSummary).filter(name => {
+                const s = personSummary[name];
+                return s.inQty > 0 || s.outQty > 0;
+            });
+
+            if (users.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <p>ยังไม่มีประวัติการเบิกหรือการนำเข้าทรัพย์สินของบุคคลใดในระบบ</p>
+                    </div>`;
+                return;
+            }
+
+            users.sort().forEach(user => {
+                const s = personSummary[user];
+                
+                // สร้างรายการสินค้า
+                let itemsHTML = '';
+                for (const [itemName, qtys] of Object.entries(s.items)) {
+                    itemsHTML += `
+                        <li class="summary-item-row">
+                            <span class="summary-item-name">${itemName}</span>
+                            <div class="summary-item-qtys">
+                                ${qtys.in > 0 ? `<span class="summary-qty-in" title="นำส่งเข้าคลัง">+${qtys.in}</span>` : ''}
+                                ${qtys.out > 0 ? `<span class="summary-qty-out" title="เบิกออกคลัง">-${qtys.out}</span>` : ''}
+                            </div>
+                        </li>`;
+                }
+
+                // หาอักษรแรกสำหรับ Avatar
+                const initials = s.name.charAt(0);
+
+                const card = document.createElement('div');
+                card.className = 'summary-card';
+                card.innerHTML = `
+                    <div class="summary-card-header">
+                        <div class="summary-user">
+                            <div class="personnel-avatar">${initials}</div>
+                            <div>
+                                <strong style="font-size:0.95rem;color:var(--text-light);">${s.name}</strong>
+                                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">ผู้ทำรายการคลังระบบ</div>
+                            </div>
+                        </div>
+                        <div class="summary-totals">
+                            <span style="color:var(--success-green);">เข้า: <span>${s.inQty}</span></span> | 
+                            <span style="color:var(--danger-red);">เบิก: <span>${s.outQty}</span></span>
+                        </div>
+                    </div>
+                    <ul class="summary-items-list">
+                        ${itemsHTML}
+                    </ul>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Render Tab 4: Personnel Register Grid
+        function renderPersonnelGrid() {
+            const grid = document.getElementById('personnelGrid');
+            grid.innerHTML = '';
+
+            if (personnel.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <i class="fa-solid fa-user-xmark"></i>
+                        <p>ไม่มีรายชื่อบุคคลที่จดจำไว้ในระบบ เริ่มพิมพ์ชื่อเพื่อเพิ่มรายชื่อได้ด้านบน</p>
+                    </div>`;
+                return;
+            }
+
+            // นับว่าแต่ละคนทำรายการเบิกไปกี่ครั้ง
+            const transCounts = {};
+            transactions.forEach(t => {
+                transCounts[t.person] = (transCounts[t.person] || 0) + 1;
+            });
+
+            // เรียงรายชื่อพนักงานตามลำดับอักษร
+            const sortedPersonnel = personnel.slice().sort();
+
+            sortedPersonnel.forEach(name => {
+                const count = transCounts[name] || 0;
+                const initials = name.charAt(0);
+                
+                const card = document.createElement('div');
+                card.className = 'personnel-card';
+                card.innerHTML = `
+                    <div class="personnel-info">
+                        <div class="personnel-avatar">${initials}</div>
+                        <div>
+                            <div class="personnel-name">${name}</div>
+                            <div class="personnel-count"><i class="fa-solid fa-clock-history"></i> ทำรายการสะสมทั้งหมด ${count} ครั้ง</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-danger btn-icon-only" onclick="deletePersonnel('${name}')" title="ลบชื่อนี้ออกจากระบบความจำ">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Modal Controllers
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            
+            // ล้างค่าหลังจากปิด modal
+            if (modalId === 'transactionModal') {
+                document.getElementById('modalQty').value = 1;
+                document.getElementById('modalPersonInput').value = '';
+                document.getElementById('modalSuggestions').classList.remove('active');
+                activeAssetIndex = null;
+            } else if (modalId === 'addAssetModal') {
+                document.getElementById('newAssetName').value = '';
+                document.getElementById('newAssetBroughtForward').value = 0;
+            }
+        }
+
+        // Open Asset modal
+        function openAddAssetModal() {
+            openModal('addAssetModal');
+            document.getElementById('newAssetName').focus();
+        }
+
+        // Submit new asset creation
+        function submitAddAsset() {
+            const nameInput = document.getElementById('newAssetName');
+            const qtyInput = document.getElementById('newAssetBroughtForward');
+
+            const name = nameInput.value.trim();
+            const broughtForward = parseInt(qtyInput.value);
+
+            if (!name) {
+                showToast('กรุณาระบุชื่อรายการทรัพย์สิน', 'error');
+                return;
+            }
+            if (isNaN(broughtForward) || broughtForward < 0) {
+                showToast('ยอดยกมาต้องไม่ติดลบ', 'error');
+                return;
+            }
+
+            const exists = assets.some(a => a.name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                showToast(`มีรายการทรัพย์สินชื่อ "${name}" อยู่ในระบบแล้ว`, 'error');
+                return;
+            }
+
+            // สร้าง Asset ใหม่
+            const newId = assets.length > 0 ? Math.max(...assets.map(a => a.id)) + 1 : 1;
+            const newAsset = {
+                id: newId,
+                name: name,
+                broughtForward: broughtForward,
+                totalIn: 0,
+                totalOut: 0,
+                currentBalance: broughtForward,
+                history: []
+            };
+
+            assets.push(newAsset);
+            
+            // บันทึกธุรกรรมนำเข้าเริ่มต้น (ถ้ายอดยกมา > 0)
+            if (broughtForward > 0) {
+                const timestamp = new Date().toLocaleString('th-TH');
+                transactions.unshift({
+                    id: 'tx-' + Math.random().toString(36).substr(2, 9),
+                    timestamp: timestamp,
+                    assetId: newId,
+                    assetName: name,
+                    type: 'in',
+                    qty: broughtForward,
+                    person: 'ระบบ (ยอดยกมาตั้งต้น)'
+                });
+                updateAssetHistoryFromTx();
+            }
+
+            saveData();
+            closeModal('addAssetModal');
+            renderAssetTable();
+            updateStats();
+            showToast(`เพิ่มทรัพย์สิน "${name}" สำเร็จ`, 'success');
+        }
+
+        // Delete asset
+        function deleteAsset(index) {
+            const a = assets[index];
+            if (confirm(`คุณต้องการลบรายการทรัพย์สิน "${a.name}" หรือไม่?\nข้อมูลการทำธุรกรรมของรายการนี้จะยังถูกเก็บไว้ในแท็บประวัติ แต่ทรัพย์สินในตารางหลักจะหายไป`)) {
+                assets.splice(index, 1);
+                saveData();
+                renderAssetTable();
+                updateStats();
+                showToast(`ลบรายการทรัพย์สิน "${a.name}" สำเร็จ`, 'success');
+            }
+        }
+
+        // Transaction Modal Launcher
+        function openTransactionModal(index, type) {
+            activeAssetIndex = index;
+            const asset = assets[index];
+            
+            document.getElementById('modalAssetLabel').innerText = asset.name;
+            document.getElementById('modalAssetBalance').innerText = asset.currentBalance.toLocaleString();
+            
+            switchModalTransactionType(type);
+            openModal('transactionModal');
+            
+            // โหลดชิปรายชื่อแนะนำล่าสุดใต้ Input
+            renderRecentPersonChips();
+
+            setTimeout(() => {
+                document.getElementById('modalQty').focus();
+            }, 100);
+        }
+
+        // Switch transaction mode inside modal (In/Out)
+        function switchModalTransactionType(type) {
+            activeTransactionType = type;
+            const tabIn = document.getElementById('modalTabIn');
+            const tabOut = document.getElementById('modalTabOut');
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+
+            if (type === 'in') {
+                tabIn.classList.add('active');
+                tabOut.classList.remove('active');
+                confirmBtn.className = 'btn btn-blue';
+                confirmBtn.innerText = 'ยืนยันการนำเข้า (+)';
+            } else {
+                tabIn.classList.remove('active');
+                tabOut.classList.add('active');
+                confirmBtn.className = 'btn btn-danger';
+                confirmBtn.innerText = 'ยืนยันการเบิกออก (-)';
+            }
+        }
+
+        // Auto Suggestion Logic
+        function handlePersonInput(value) {
+            const list = document.getElementById('modalSuggestions');
+            list.innerHTML = '';
+            
+            const cleanVal = value.trim().toLowerCase();
+            if (!cleanVal) {
+                // หากว่างเปล่าแต่ Focus ให้แสดงผลทั้งหมด
+                handlePersonFocus();
+                return;
+            }
+
+            const matched = personnel.filter(p => p.toLowerCase().includes(cleanVal));
+
+            if (matched.length === 0) {
+                list.classList.remove('active');
+                return;
+            }
+
+            matched.forEach(name => {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.innerHTML = `<span>${name}</span> <i class="fa-solid fa-history" title="รายชื่อที่ถูกจดจำ"></i>`;
+                item.onclick = function() {
+                    selectPersonSuggestion(name);
+                };
+                list.appendChild(item);
+            });
+
+            list.classList.add('active');
+        }
+
+        function handlePersonFocus() {
+            const list = document.getElementById('modalSuggestions');
+            list.innerHTML = '';
+            const inputVal = document.getElementById('modalPersonInput').value.trim();
+
+            if (inputVal) {
+                handlePersonInput(inputVal);
+                return;
+            }
+
+            if (personnel.length === 0) {
+                list.classList.remove('active');
+                return;
+            }
+
+            // แสดงรายชื่อทั้งหมดเมื่อโฟกัสที่ช่องว่าง
+            const sorted = personnel.slice().sort();
+            sorted.forEach(name => {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.innerHTML = `<span>${name}</span> <i class="fa-regular fa-user"></i>`;
+                item.onclick = function() {
+                    selectPersonSuggestion(name);
+                };
+                list.appendChild(item);
+            });
+
+            list.classList.add('active');
+        }
+
+        function selectPersonSuggestion(name) {
+            document.getElementById('modalPersonInput').value = name;
+            document.getElementById('modalSuggestions').classList.remove('active');
+        }
+
+        // Close suggestions dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const wrapper = document.querySelector('.autocomplete-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('modalSuggestions').classList.remove('active');
+            }
+        });
+
+        // Dynamic Chips loader
+        function renderRecentPersonChips() {
+            const container = document.getElementById('recentPersonChips');
+            container.innerHTML = '';
+
+            // วิเคราะห์หาผู้ที่ใช้งานบ่อยที่สุดจากประวัติธุรกรรม
+            const nameFrequency = {};
+            transactions.forEach(t => {
+                if (t.person && !t.person.includes('ระบบ')) {
+                    nameFrequency[t.person] = (nameFrequency[t.person] || 0) + 1;
+                }
+            });
+
+            // ดึงรายชื่อยอดนิยมสูงสุด 4 คน
+            const topPeople = Object.keys(nameFrequency)
+                .sort((a, b) => nameFrequency[b] - nameFrequency[a])
+                .slice(0, 4);
+
+            // หากไม่มียอดนิยม ให้ใช้รายชื่อทั่วไป 4 คนแรก
+            const displayPeople = topPeople.length > 0 ? topPeople : personnel.slice(0, 4);
+
+            if (displayPeople.length === 0) {
+                container.innerHTML = '<span style="font-size:0.75rem;color:var(--text-muted);font-style:italic;">ยังไม่มีประวัติรายชื่อพนักงาน</span>';
+                return;
+            }
+
+            displayPeople.forEach(name => {
+                const chip = document.createElement('span');
+                chip.className = 'recent-chip';
+                chip.innerHTML = `<i class="fa-solid fa-user-clock"></i> ${name}`;
+                chip.onclick = function() {
+                    document.getElementById('modalPersonInput').value = name;
+                    document.getElementById('modalSuggestions').classList.remove('active');
+                };
+                container.appendChild(chip);
+            });
+        }
+
+        // Submit transaction (In or Out)
+        function submitTransaction() {
+            const qtyInput = document.getElementById('modalQty');
+            const personInput = document.getElementById('modalPersonInput');
+            const saveCheck = document.getElementById('modalSavePersonCheckbox');
+
+            const qty = parseInt(qtyInput.value);
+            const person = personInput.value.trim();
+
+            if (activeAssetIndex === null) return;
+            const asset = assets[activeAssetIndex];
+
+            if (isNaN(qty) || qty <= 0) {
+                showToast('กรุณาระบุจำนวนสินค้าที่ถูกต้องและมากกว่า 0', 'error');
+                return;
+            }
+
+            if (!person) {
+                showToast('กรุณากรอกชื่อผู้ทำธุรกรรมเบิกเข้า/ออก', 'error');
+                return;
+            }
+
+            // ตรวจสอบคลังคงเหลือสำหรับการเบิกออก
+            if (activeTransactionType === 'out' && qty > asset.currentBalance) {
+                showToast(`ไม่สามารถเบิกสินค้าได้: ยอดคงเหลือไม่เพียงพอ (เบิกได้สูงสุด ${asset.currentBalance} หน่วย)`, 'error');
+                return;
+            }
+
+            // ดำเนินการอัปเดตยอดทรัพย์สินหลัก
+            if (activeTransactionType === 'in') {
+                asset.totalIn += qty;
+            } else {
+                asset.totalOut += qty;
+            }
+
+            // คำนวณคงเหลือ
+            asset.currentBalance = asset.broughtForward + asset.totalIn - asset.totalOut;
+
+            // ตรวจสอบและบันทึกข้อมูลรายชื่อคนลงระบบจำ (หากกดติ๊กจำชื่อและยังไม่มีในฐานข้อมูล)
+            if (saveCheck.checked && !personnel.some(p => p.toLowerCase() === person.toLowerCase())) {
+                personnel.push(person);
+            }
+
+            // บันทึก Log Transaction ละเอียด
+            const timestamp = new Date().toLocaleString('th-TH');
+            const txId = 'tx-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
+
+            const newTx = {
+                id: txId,
+                timestamp: timestamp,
+                assetId: asset.id,
+                assetName: asset.name,
+                type: activeTransactionType,
+                qty: qty,
+                person: person
+            };
+
+            transactions.unshift(newTx); // ใส่ไว้หน้าสุด
+            
+            // อัปเดตประวัติใน Assets ให้สอดคล้องกัน
+            updateAssetHistoryFromTx();
+
+            // จัดการ Object userWithdrawals แบบ Real-time สะสม
+            if (activeTransactionType === 'out') {
+                if (!userWithdrawals[person]) userWithdrawals[person] = {};
+                if (!userWithdrawals[person][asset.name]) userWithdrawals[person][asset.name] = 0;
+                userWithdrawals[person][asset.name] += qty;
+            }
+
+            saveData();
+            closeModal('transactionModal');
+            
+            // รีเฟรชแสดงผลตารางคุม
+            renderAssetTable();
+            updateStats();
+
+            showToast(`บันทึกการ${activeTransactionType === 'in' ? 'นำเข้า' : 'เบิกออก'} ทรัพย์สิน "${asset.name}" จำนวน ${qty} หน่วย เรียบร้อยแล้ว`, 'success');
+        }
+
+        // Rollback / Undo Transaction
+        function rollbackTransaction(txId) {
+            const txIndex = transactions.findIndex(t => t.id === txId);
+            if (txIndex === -1) return;
+
+            const tx = transactions[txIndex];
+            
+            if (confirm(`คุณต้องการ "ยกเลิกและย้อนธุรกรรม" รายการนี้ใช่หรือไม่?\n\n- ทรัพย์สิน: ${tx.assetName}\n- การทำรายการ: ${tx.type === 'in' ? 'นำเข้า (+)' : 'เบิกออก (-)'}\n- จำนวน: ${tx.qty} หน่วย\n- ผู้ทำรายการ: ${tx.person}\n\n*ยอดทรัพย์สินในระบบจะถูกคำนวณย้อนกลับทันที*`)) {
+                
+                // ค้นหาทรัพย์สินที่เกี่ยวข้อง
+                const asset = assets.find(a => a.id === tx.assetId);
+                
+                if (asset) {
+                    if (tx.type === 'in') {
+                        // เช็คก่อนว่าถ้าย้อนรายการนำเข้าออกไปแล้ว ยอดคงเหลือจะติดลบหรือไม่
+                        if (asset.currentBalance - tx.qty < 0) {
+                            showToast(`ไม่สามารถยกเลิกการนำเข้านี้ได้เนื่องจากยอดสินค้าคงเหลือปัจจุบัน (${asset.currentBalance} หน่วย) มีค่าน้อยกว่าจำนวนที่จะลบออก (${tx.qty} หน่วย)`, 'error');
+                            return;
+                        }
+                        asset.totalIn -= tx.qty;
+                    } else {
+                        asset.totalOut -= tx.qty;
+                        
+                        // หักออกจากยอดสะสม
+                        if (userWithdrawals[tx.person] && userWithdrawals[tx.person][asset.name]) {
+                            userWithdrawals[tx.person][asset.name] -= tx.qty;
+                            if (userWithdrawals[tx.person][asset.name] <= 0) {
+                                delete userWithdrawals[tx.person][asset.name];
+                            }
+                            if (Object.keys(userWithdrawals[tx.person]).length === 0) {
+                                delete userWithdrawals[tx.person];
+                            }
+                        }
+                    }
+
+                    // อัปเดตคำนวณยอด
+                    asset.currentBalance = asset.broughtForward + asset.totalIn - asset.totalOut;
+                }
+
+                // ลบธุรกรรมนี้ออก
+                transactions.splice(txIndex, 1);
+                
+                // ปรับปรุงแถวข้อมูล Log ใน Asset
+                updateAssetHistoryFromTx();
+                
+                saveData();
+                renderTransactionTable();
+                updateStats();
+                showToast('ย้อนคืนรายการธุรกรรมสำเร็จแล้ว ยอดทรัพย์สินถูกปรับปรุงแล้ว', 'success');
+            }
+        }
+
+        // Add personnel from settings tab
+        function addPersonnelFromTab() {
+            const input = document.getElementById('newPersonnelNameInput');
+            const name = input.value.trim();
+
+            if (!name) {
+                showToast('กรุณากรอกชื่อ-สกุลบุคคลที่ต้องการเพิ่ม', 'error');
+                return;
+            }
+
+            const exists = personnel.some(p => p.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                showToast(`รายชื่อ "${name}" มีอยู่ในระบบจดจำแล้ว`, 'error');
+                return;
+            }
+
+            personnel.push(name);
+            saveData();
+            input.value = '';
+            renderPersonnelGrid();
+            updateStats();
+            showToast(`ลงทะเบียนรายชื่อ "${name}" เรียบร้อยแล้ว`, 'success');
+        }
+
+        // Delete personnel from remembered list
+        function deletePersonnel(name) {
+            if (confirm(`ยืนยันการลบรายชื่อ "${name}" ออกจากระบบจำรายชื่อสำหรับกรอกข้อมูล?\n\n*หมายเหตุ: ข้อมูลการทำธุรกรรมของคนๆ นี้ในประวัติจะยังคงอยู่และไม่หายไป*`)) {
+                personnel = personnel.filter(p => p !== name);
+                saveData();
+                renderPersonnelGrid();
+                updateStats();
+                showToast(`ลบรายชื่อ "${name}" สำเร็จ`, 'success');
+            }
+        }
+
+        // Clock logic
+        function updateClock() {
+            const now = new Date();
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            const dateOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+            const timeStr = now.toLocaleTimeString('en-US', timeOptions);
+            const dateStr = now.toLocaleDateString('th-TH', dateOptions);
+            
+            const clockEl = document.getElementById('liveClock').querySelector('span');
+            if (clockEl) {
+                clockEl.innerHTML = `${dateStr} &nbsp;|&nbsp; <strong style="color:var(--text-light); font-family:'Inter',sans-serif;">${timeStr}</strong>`;
+            }
+        }
+
+        // Bootstrapping the Application
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            renderAssetTable();
+            updateStats();
+
+            // Start Live Clock
+            updateClock();
+            setInterval(updateClock, 1000);
+        });
+    </script>
+</body>
+</html>
